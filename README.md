@@ -2,9 +2,11 @@
 
 A plugin to implement the Single-Decoupling alchemical protocol in OpenMM
 
-Emilio Gallicchio <egallicchio@brooklyn.cuny.edu>
-Rajat Pal <rajatfor2014@gmail.com>
-Baofeng Zhang <BZhang@brooklyn.cuny.edu>
+## Contributors
+
+Emilio Gallicchio <egallicchio@brooklyn.cuny.edu>  
+Rajat Pal <rajatfor2014@gmail.com>  
+Baofeng Zhang <BZhang@brooklyn.cuny.edu>  
 
 
 ## License
@@ -13,7 +15,7 @@ This software is released under the LGPL license. See LICENSE.
 
 ## Credits
 
-This software is maintained by Emilio Gallicchio <egallicchio@brooklyn.cuny.edu>. Development of this software has been supported in part from a grant from the National Science Foundation (ACI 1440665).
+This software is maintained by the Gallicchio's laboratory at Department of Chemistry of Brooklyn College of CUNY. Development and maintenance of this software is supported in part from a grant from the National Science Foundation ([CAREER 1750511](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1750511&HistoricalAwards=false)).
 
 The plugin interface is based on the [openmmexampleplugin](https://github.com/peastman/openmmexampleplugin) by Peter Eastman.
 
