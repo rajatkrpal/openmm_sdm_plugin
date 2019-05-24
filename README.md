@@ -62,10 +62,10 @@ The last two steps may need superuser access depending on the installation targe
 
 
 ```
-
 cd example
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<openmm_dir>/lib:<openmm_dir>/lib/plugins
 python test.py
+```
 
 `<openmm_dir>` is the OpenMM installation directory. Again, the last step is best accomplished under the same `virtualenv` environment used to build the python modules.
 
