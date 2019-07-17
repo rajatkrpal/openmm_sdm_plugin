@@ -10,12 +10,11 @@ add_custom_command(
         -o "${WRAP_FILE}"
         "-I${OPENMM_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/SDMplugin.i"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/SDMplugin.i"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/SDMplugin.i" "${CMAKE_CURRENT_SOURCE_DIR}/SDMUtils.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 # Compile the Python module.
-
 add_custom_target(PythonInstall DEPENDS "${WRAP_FILE}")
 set(SDMPLUGIN_HEADER_DIR "${CMAKE_SOURCE_DIR}/openmmapi/include")
 set(SDMPLUGIN_LIBRARY_DIR "${CMAKE_BINARY_DIR}")
