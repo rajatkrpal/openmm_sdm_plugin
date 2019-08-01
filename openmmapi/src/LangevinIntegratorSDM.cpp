@@ -84,6 +84,17 @@ void LangevinIntegratorSDM::initialize(ContextImpl& contextRef) {
     if (owner != NULL && &contextRef.getOwner() != owner)
         throw OpenMMException("This Integrator is already bound to a context");
     context = &contextRef;
+
+    const System &system = contextRef.getSystem();
+    int numforces = system.getNumForces();
+    for (int i=0; i<numforces; i++){
+      const Force &force = system.getForce(i);
+      int group = force.getForceGroup();
+      if (!(group == 1 || group == 2)){
+	throw OpenMMException("The SDM integrator requires all forces to be either in force group 1 (bonded) or group 2 (nonbonded)");
+      }
+    }
+
     owner = &contextRef.getOwner();
     kernel = context->getPlatform().createKernel(IntegrateLangevinStepSDMKernel::Name(), contextRef);
     kernel.getAs<IntegrateLangevinStepSDMKernel>().initialize(contextRef.getSystem(), *this);
