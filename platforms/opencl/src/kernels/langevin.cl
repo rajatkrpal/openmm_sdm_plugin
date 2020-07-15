@@ -202,11 +202,10 @@ __kernel void RestoreBound(int numLigParticles,
  */
 __kernel void MakeUnbound(int numLigParticles,
 			  __global   int* restrict LigParticle,
-			  float displ,
+			  float displx, float disply, float displz,
 			  __global real4* restrict posq
 			  ){
-  real displ1 = 10.0f;
-  real4 displacement = (real4)(displ1,displ1,displ1,0);
+  real4 displacement = (real4)(displx,disply,displz,0);
   uint index = get_global_id(0);
   while (index < numLigParticles) {
     int p = LigParticle[index];

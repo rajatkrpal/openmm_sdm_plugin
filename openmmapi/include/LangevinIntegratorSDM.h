@@ -38,6 +38,7 @@
 #include "openmm/Integrator.h"
 #include "openmm/Kernel.h"
 #include "openmm/internal/windowsExport.h"
+#include "openmm/Vec3.h"
 
 using namespace OpenMM;
 using namespace std;
@@ -481,6 +482,18 @@ public:
   double getw0intercept() const {
     return b_w0;
   }
+
+
+  // ligand/solute displacement vector  (in nm)
+  void setDisplacement(double dx, double dy, double dz){
+    displx = dx;
+    disply = dy;
+    displz = dz;
+  }
+  Vec3 getDisplacement() const {
+    return Vec3(displx,disply,displz);
+  }
+
 protected:
   /**
    * This will be called by the Context when it is created.  It informs the Integrator
@@ -526,6 +539,8 @@ private:
 
     double PotEnergy;//current alchemical potential energy
     double BindE; // current binding energy
+
+    double displx, disply, displz;
 
     bool hasRestraintControl;
     string RestraintControlParameterName;
