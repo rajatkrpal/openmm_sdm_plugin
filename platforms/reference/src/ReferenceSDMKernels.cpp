@@ -202,7 +202,7 @@ void ReferenceIntegrateLangevinStepSDMKernel::RestoreBound(ContextImpl& context,
 void ReferenceIntegrateLangevinStepSDMKernel::MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
   int numLigParticles = LigParticle.size();
   vector<Vec3>& posData = extractPositions(context);
-  double displ = 20.0;
+  double displ = 2.38; //DEBUG
 
   for(int i = 0; i<numLigParticles; i++){
     int p = LigParticle[i];
@@ -277,7 +277,8 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
 
  //hybrid potential energy
  double fp;
- double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
+ //double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
+ double BindE = integrator.SoftCoreF(UnboundEnergy - BoundEnergy, umax, acore, ubcore, fp); //DEBUG
  double bfp = 0.0;
  double ebias = 0.0;
  if( method == LangevinIntegratorSDM::QuadraticMethod){
@@ -294,7 +295,8 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
    ebias = lambdac * BindE;
    bfp = lambdac;
  }
- double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
+ //double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
+ double PotEnergy = BoundEnergy + ebias + RestraintEnergy;//DEBUG
  integrator.setBindE(BindE);
  integrator.setPotEnergy(PotEnergy);
 
@@ -320,9 +322,13 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
  // hybrid force, forceData in the r.h.s. at this point holds the restraint forces
  double sp = bfp*fp;
  for (int i = 0 ; i < numParticles; ++i ){
-   forceData[i][0] = sp*BoundForces[i][0]+(1.0-sp)*UnboundForces[i][0]+forceData[i][0] ;
-   forceData[i][1] = sp*BoundForces[i][1]+(1.0-sp)*UnboundForces[i][1]+forceData[i][1] ;
-   forceData[i][2] = sp*BoundForces[i][2]+(1.0-sp)*UnboundForces[i][2]+forceData[i][2] ; 
+   //forceData[i][0] = sp*BoundForces[i][0]+(1.0-sp)*UnboundForces[i][0]+forceData[i][0] ;
+   //forceData[i][1] = sp*BoundForces[i][1]+(1.0-sp)*UnboundForces[i][1]+forceData[i][1] ;
+   //forceData[i][2] = sp*BoundForces[i][2]+(1.0-sp)*UnboundForces[i][2]+forceData[i][2] ; 
+   //DEBUG
+   forceData[i][0] = sp*UnboundForces[i][0]+(1.0-sp)*BoundForces[i][0]+forceData[i][0] ;
+   forceData[i][1] = sp*UnboundForces[i][1]+(1.0-sp)*BoundForces[i][1]+forceData[i][1] ;
+   forceData[i][2] = sp*UnboundForces[i][2]+(1.0-sp)*BoundForces[i][2]+forceData[i][2] ; 
  }
 
  if (dynamics == 0 || temperature != prevTemp || friction != prevFriction || stepSize != prevStepSize) {

@@ -225,7 +225,8 @@ void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Langevi
     */
     //hybrid potential energy
     double fp;
-    double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
+    //double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
+    double BindE = integrator.SoftCoreF(UnboundEnergy - BoundEnergy, umax, acore, ubcore, fp); //DEBUG
     double bfp = 0.0;
     double ebias = 0.0;
     if( method == LangevinIntegratorSDM::QuadraticMethod){
@@ -242,7 +243,8 @@ void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Langevi
       ebias = lambdac * BindE;
       bfp = lambdac;
     }
-    double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
+    //double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
+    double PotEnergy = BoundEnergy + ebias + RestraintEnergy;//DEBUG
     integrator.setPotEnergy(PotEnergy);
     integrator.setBindE(BindE);
 

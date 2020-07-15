@@ -80,7 +80,8 @@ __kernel void sdmForce(__global const real4* restrict posq,
     real lmb1 = 1.0f - lambdac;
     while (index < NUM_ATOMS) {
       //at this point force[] holds the restraint forces
-      force[index] = lmb*force_bound[index] + lmb1*force_unbound[index] + force[index];
+      //force[index] = lmb*force_bound[index] + lmb1*force_unbound[index] + force[index];
+      force[index] = lmb1*force_bound[index] + lmb*force_unbound[index] + force[index];//DEBUG
       index += get_global_size(0);
     }
 }
