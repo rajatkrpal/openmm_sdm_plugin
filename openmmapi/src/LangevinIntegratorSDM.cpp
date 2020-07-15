@@ -77,6 +77,9 @@ LangevinIntegratorSDM::LangevinIntegratorSDM(double temperature, double friction
       setNonEquilibrium(0);
       work_value = 0.0;
       hasRestraintControl = false;
+
+      //default displacement vector is 20 nm along x, y, z
+      displx = disply = displz = 20.0;
 }
 
 

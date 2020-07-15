@@ -111,11 +111,14 @@ void OpenCLIntegrateLangevinStepSDMKernel::initialize(const System& system, cons
     RestoreBoundKernel.setArg<cl::Buffer>(3, BoundLigandCoordinates->getDeviceBuffer());
     
     MakeUnboundKernel = cl::Kernel(program, "MakeUnbound");
-    float displacement = 20.0; //20 nanometers in xyz
+    Vec3 displ = integrator.getDisplacement();
+    float dx = displ[0]; float dy = displ[1]; float dz = displ[2];
     MakeUnboundKernel.setArg<cl_int>(0, ligsize);
     MakeUnboundKernel.setArg<cl::Buffer>(1, LigParticle->getDeviceBuffer());    
-    MakeUnboundKernel.setArg<cl_float>(2, displacement);
-    MakeUnboundKernel.setArg<cl::Buffer>(3, cl.getPosq().getDeviceBuffer());
+    MakeUnboundKernel.setArg<cl_float>  (2, dx);
+    MakeUnboundKernel.setArg<cl_float>  (3, dy);
+    MakeUnboundKernel.setArg<cl_float>  (4, dz);
+    MakeUnboundKernel.setArg<cl::Buffer>(5, cl.getPosq().getDeviceBuffer());
 
     //soft core parameters
     umax = integrator.getUmax();

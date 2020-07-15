@@ -202,13 +202,13 @@ void ReferenceIntegrateLangevinStepSDMKernel::RestoreBound(ContextImpl& context,
 void ReferenceIntegrateLangevinStepSDMKernel::MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
   int numLigParticles = LigParticle.size();
   vector<Vec3>& posData = extractPositions(context);
-  double displ = 2.38; //DEBUG
+  Vec3 displ = integrator.getDisplacement();
 
   for(int i = 0; i<numLigParticles; i++){
     int p = LigParticle[i];
-    posData[p][0] += displ;
-    posData[p][1] += displ;
-    posData[p][2] += displ;
+    posData[p][0] += displ[0];
+    posData[p][1] += displ[1];
+    posData[p][2] += displ[2];
   }
 }
 

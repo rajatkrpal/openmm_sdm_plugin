@@ -142,7 +142,9 @@ public:
    void setu0intercept(double bu0);  
    double getu0intercept() const;
    void setw0intercept(double bw0);
-   
+   double getw0intercept() const;
+   void setDisplacement(double dx, double dy, double dz);
+   Vec3 getDisplacement() const;
 };
 
 }
