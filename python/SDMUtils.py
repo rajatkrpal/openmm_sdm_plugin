@@ -44,7 +44,8 @@ class SDMUtils(object):
                           dihedral1tol = 10.0*degrees,
                           dihedral2center = 0.*degrees,
                           kfdihedral2 = 0.0 * kilocalorie_per_mole/degrees**2,
-                          dihedral2tol = 10.0*degrees):
+                          dihedral2tol = 10.0*degrees,
+                          offset = [0., 0., 0.] * angstrom):
 
         if not (lig_cm_particles and rcpt_cm_particles):
             return
@@ -67,7 +68,7 @@ class SDMUtils(object):
             expr += " + %s*( (kfcd1/2)*(step(dm1)*max(0,db1)^2+step(-dm1)*max(0,-da1)^2) )  " % self.RestraintControlParameterName
             expr += " + %s*( (kfcd2/2)*(step(dm2)*max(0,db2)^2+step(-dm2)*max(0,-da2)^2) )  " % self.RestraintControlParameterName
 
-        expr += " ; d12 = distance(g1,g2) ; "
+        expr += " ; d12 = sqrt((x1 - offx - x2)^2 + (y1 - offy - y2)^2 + (z1 - offz - z2)^2 ) ; "
 
         if do_angles:
             expr += "db0 = xb0 - pi*floor(xb0/pi + 0.5)  ; xb0 = theta - b0 ; "
@@ -99,7 +100,10 @@ class SDMUtils(object):
 
         self.force.addPerBondParameter("kfcm")
         self.force.addPerBondParameter("tolcm")
-            
+        self.force.addPerBondParameter("offx")
+        self.force.addPerBondParameter("offy")
+        self.force.addPerBondParameter("offz")
+
         self.force.addGroup(lig_cm_particles) #g1 CM of lig
         self.force.addGroup(rcpt_cm_particles) #g2 CM of rcpt
 
@@ -127,6 +131,10 @@ class SDMUtils(object):
 
         kfc = kfcm / (kilojoule_per_mole/radians**2)
         tolc = tolcm / nanometer
+        offv = offset / nanometer
+        offx = offv[0]
+        offy = offv[1]
+        offz = offv[2]
             
         if do_angles:
 
@@ -143,10 +151,10 @@ class SDMUtils(object):
             b2 = (dihedral2center + dihedral2tol)/radians
 
             groups = range(8)
-            params = [kfc, tolc, kfcd0, a0, b0, kfcd1, a1, b1, kfcd2, a2, b2]
+            params = [kfc, tolc, offx, offy, offz, kfcd0, a0, b0, kfcd1, a1, b1, kfcd2, a2, b2]
         else:
             groups = [0,1]
-            params = [kfc, tolc]
+            params = [kfc, tolc, offx, offy, offz]
 
         self.force.addBond(groups, params)
 %}
