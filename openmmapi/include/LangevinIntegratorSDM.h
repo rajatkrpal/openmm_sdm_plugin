@@ -66,22 +66,10 @@ public:
      * The SDM integrator assumes that the ligand is appropriately restrained by a combination 
      * of restraining forces. In particular, it assumes that a CustomCentroidBondForce
      * restrains the position of the ligand. And that, optionally, a CustomCompoundBondForce 
-     * restrains the orientation of the ligand. It further assumes that both forces can be turned
-     * by setting to zero appropriate named global control parameters: 
-     * see setCentroidControlParameterName() and setOrientationControlParameterName() 
+     * restrains the orientation of the ligand.
      */    
   LangevinIntegratorSDM(double temperature, double frictionCoeff, double stepSize,
-			  vector<int> LigParticle_t) ;
-
-
-  /**
-   * get the list of ligand particles
-   *
-   * @return list of ligand particles
-   */
-  vector<int> getLigParticle() const {
-    return LigParticle;
-  }
+			  int nParticles) ;
 
   /**
    * Set the value the lambda alchemical parameter. 
@@ -311,6 +299,7 @@ public:
    * Acquire current binding energy
    */
   double getBindE(void) const {
+    //cout << "get BindE API " << BindE << endl;//DEBUG
     return BindE;
   }
   /**
@@ -318,7 +307,8 @@ public:
    * (this would be called by a computational kernel)
    */
   void setBindE(double be)  {
-    BindE = be;
+    //cout << "set BindE API " << be << endl; //DEBUG
+    BindE = be; 
   }
 
   /**
@@ -385,16 +375,6 @@ public:
    */
   double SoftCoreF(double u, double umax, double a, double ub, double& fp);
   
-  /**
-   * Set the name of the restraint force on/off parameter
-   *
-   * @param name: the name of the parameter
-   */
-  void setRestraintControlParameterName(string name){
-    RestraintControlParameterName = name;
-    hasRestraintControl = true;
-  }
-
   //set the non-equilibrium max time
   void setNoneqtmax(double noneq_tmax) {
     Ntmax = noneq_tmax;
@@ -484,14 +464,11 @@ public:
   }
 
 
-  // ligand/solute displacement vector  (in nm)
-  void setDisplacement(double dx, double dy, double dz){
-    displx = dx;
-    disply = dy;
-    displz = dz;
+  void setDisplacement(int atom, double dx, double dy, double dz){
+    displ[atom] = Vec3(dx,dy,dz);
   }
-  Vec3 getDisplacement() const {
-    return Vec3(displx,disply,displz);
+  Vec3 getDisplacement(int atom) const {
+    return displ[atom]; 
   }
 
 protected:
@@ -525,7 +502,10 @@ private:
     int softcore_method;
     double lambdac, gammac, wbcoeff, w0coeff;
     double lambda1, lambda2, alpha, u0;
-    vector<int> LigParticle; //ligand atoms
+    int nParticles; //number of atoms in the system
+
+    //displacement map
+    vector<Vec3> displ;
 
     //soft core parameters
     double Umax;
@@ -539,12 +519,6 @@ private:
 
     double PotEnergy;//current alchemical potential energy
     double BindE; // current binding energy
-
-    double displx, disply, displz;
-
-    bool hasRestraintControl;
-    string RestraintControlParameterName;
-
 };
 
 } // namespace SDMPlugin

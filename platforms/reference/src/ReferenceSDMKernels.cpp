@@ -143,78 +143,64 @@ ReferenceIntegrateLangevinStepSDMKernel::~ReferenceIntegrateLangevinStepSDMKerne
 
 void ReferenceIntegrateLangevinStepSDMKernel::initialize(const System& system, const LangevinIntegratorSDM& integrator) {
   int numParticles = system.getNumParticles();
-  LigParticle = integrator.getLigParticle();
-  int numLigParticles = LigParticle.size();
   masses.resize(numParticles);
-  BoundForces.resize(numParticles);
-  UnboundForces.resize(numParticles);
-  LigandCoordinates.resize(numLigParticles);
+  State1Forces.resize(numParticles);
+  State2Forces.resize(numParticles);
+  State1Coordinates.resize(numParticles);
+  State2Displacement.clear();
+  for(int i = 0; i < numParticles; ++i){
+    Vec3 displ = integrator.getDisplacement(i);
+    State2Displacement.push_back(displ);
+  }
  
   for (int i = 0; i < numParticles; ++i)
     masses[i] = static_cast<RealOpenMM>(system.getParticleMass(i));
   SimTKOpenMMUtilities::setRandomNumberSeed((unsigned int) integrator.getRandomNumberSeed()); 
 }
 
-
-void ReferenceIntegrateLangevinStepSDMKernel::SaveBound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+void ReferenceIntegrateLangevinStepSDMKernel::SaveState1(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
   int numParticles = context.getSystem().getNumParticles();
-  int numLigParticles = LigParticle.size();
   vector<Vec3>& posData = extractPositions(context);
   vector<Vec3>& forceData = extractForces(context);
 
   for(int p = 0; p<numParticles; p++){
-    BoundForces[p][0] = forceData[p][0];
-    BoundForces[p][1] = forceData[p][1];
-    BoundForces[p][2] = forceData[p][2];
+    State1Forces[p] = forceData[p];
   }
-  for(int i = 0; i<numLigParticles; i++){
-    int p = LigParticle[i];
-    LigandCoordinates[i][0] = posData[p][0];
-    LigandCoordinates[i][1] = posData[p][1];
-    LigandCoordinates[i][2] = posData[p][2];
+  for(int p = 0; p<numParticles; p++){
+    State1Coordinates[p] = posData[p];
   }
 }
 
-void ReferenceIntegrateLangevinStepSDMKernel::SaveUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+void ReferenceIntegrateLangevinStepSDMKernel::SaveState2(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
   int numParticles = context.getSystem().getNumParticles();
-  int numLigParticles = LigParticle.size();
   vector<Vec3>& forceData = extractForces(context);
 
   for(int p = 0; p<numParticles; p++){
-    UnboundForces[p][0] = forceData[p][0];
-    UnboundForces[p][1] = forceData[p][1];
-    UnboundForces[p][2] = forceData[p][2];
+    State2Forces[p] = forceData[p];
   }
 }
 
-void ReferenceIntegrateLangevinStepSDMKernel::RestoreBound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  int numLigParticles = LigParticle.size();
+void ReferenceIntegrateLangevinStepSDMKernel::RestoreState1(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  int numParticles = context.getSystem().getNumParticles();
   vector<Vec3>& posData = extractPositions(context);
 
-  for(int i = 0; i<numLigParticles; i++){
-    int p = LigParticle[i];
-    posData[p][0] = LigandCoordinates[i][0];
-    posData[p][1] = LigandCoordinates[i][1];
-    posData[p][2] = LigandCoordinates[i][2];
+  for(int p = 0; p<numParticles; p++){
+    posData[p] = State1Coordinates[p];
   }
 }
 
-void ReferenceIntegrateLangevinStepSDMKernel::MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  int numLigParticles = LigParticle.size();
+void ReferenceIntegrateLangevinStepSDMKernel::MakeState2(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  int numParticles = context.getSystem().getNumParticles();
   vector<Vec3>& posData = extractPositions(context);
-  Vec3 displ = integrator.getDisplacement();
 
-  for(int i = 0; i<numLigParticles; i++){
-    int p = LigParticle[i];
-    posData[p][0] += displ[0];
-    posData[p][1] += displ[1];
-    posData[p][2] += displ[2];
+  for(int p = 0; p<numParticles; p++){
+    posData[p] += State2Displacement[p];
   }
 }
 
 
 void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, LangevinIntegratorSDM& integrator,
-							double BoundEnergy, double UnboundEnergy, double RestraintEnergy){
+							double State1Energy, double State2Energy, double RestraintEnergy){
 
  double temperature = integrator.getTemperature();
  double friction = integrator.getFriction();
@@ -277,8 +263,7 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
 
  //hybrid potential energy
  double fp;
- //double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
- double BindE = integrator.SoftCoreF(UnboundEnergy - BoundEnergy, umax, acore, ubcore, fp); //DEBUG
+ double BindE = integrator.SoftCoreF(State2Energy - State1Energy, umax, acore, ubcore, fp);
  double bfp = 0.0;
  double ebias = 0.0;
  if( method == LangevinIntegratorSDM::QuadraticMethod){
@@ -295,9 +280,10 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
    ebias = lambdac * BindE;
    bfp = lambdac;
  }
- //double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
- double PotEnergy = BoundEnergy + ebias + RestraintEnergy;//DEBUG
+ double PotEnergy = State1Energy + ebias + RestraintEnergy;
+ //cout << BindE << " " << PotEnergy << endl; //DEBUG
  integrator.setBindE(BindE);
+ //cout << BindE << " " << PotEnergy << endl; //DEBUG
  integrator.setPotEnergy(PotEnergy);
 
  if(integrator.getNonEquilibrium() == 1){
@@ -315,8 +301,8 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
    integrator.setNoneqWorkvalue(workValue + dworkValue);
  }
  
- //cout << "Bound Energy = " << BoundEnergy << endl;
- //cout << "Unbound Energy = " << UnboundEnergy << endl;
+ //cout << "Bound Energy = " << State1Energy << endl;
+ //cout << "Unbound Energy = " << State2Energy << endl;
  //cout << "Binding Energy = " << BindE << endl;
  
  // hybrid force, forceData in the r.h.s. at this point holds the restraint forces
@@ -326,9 +312,9 @@ void ReferenceIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Lang
    //forceData[i][1] = sp*BoundForces[i][1]+(1.0-sp)*UnboundForces[i][1]+forceData[i][1] ;
    //forceData[i][2] = sp*BoundForces[i][2]+(1.0-sp)*UnboundForces[i][2]+forceData[i][2] ; 
    //DEBUG
-   forceData[i][0] = sp*UnboundForces[i][0]+(1.0-sp)*BoundForces[i][0]+forceData[i][0] ;
-   forceData[i][1] = sp*UnboundForces[i][1]+(1.0-sp)*BoundForces[i][1]+forceData[i][1] ;
-   forceData[i][2] = sp*UnboundForces[i][2]+(1.0-sp)*BoundForces[i][2]+forceData[i][2] ; 
+   forceData[i][0] = sp*State2Forces[i][0]+(1.0-sp)*State1Forces[i][0]+forceData[i][0] ;
+   forceData[i][1] = sp*State2Forces[i][1]+(1.0-sp)*State1Forces[i][1]+forceData[i][1] ;
+   forceData[i][2] = sp*State2Forces[i][2]+(1.0-sp)*State1Forces[i][2]+forceData[i][2] ; 
  }
 
  if (dynamics == 0 || temperature != prevTemp || friction != prevFriction || stepSize != prevStepSize) {

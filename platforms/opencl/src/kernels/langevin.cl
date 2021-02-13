@@ -70,8 +70,8 @@ __kernel void integrateLangevinPart2(__global real4* restrict posq, __global rea
 
 //lambda-hybridized forces
 __kernel void sdmForce(__global const real4* restrict posq,
-			 __global real4* restrict force_bound,
-			 __global real4* restrict force_unbound,
+			 __global real4* restrict force_state1,
+			 __global real4* restrict force_state2,
 			 __global real4* restrict force,
 			 float lambdac){
 
@@ -81,7 +81,7 @@ __kernel void sdmForce(__global const real4* restrict posq,
     while (index < NUM_ATOMS) {
       //at this point force[] holds the restraint forces
       //force[index] = lmb*force_bound[index] + lmb1*force_unbound[index] + force[index];
-      force[index] = lmb1*force_bound[index] + lmb*force_unbound[index] + force[index];//DEBUG
+      force[index] = lmb1*force_state1[index] + lmb*force_state2[index] + force[index];//DEBUG
       index += get_global_size(0);
     }
 }
@@ -140,78 +140,67 @@ __kernel void CMForceCalcKernel(__global const int*  restrict particle_indexes1,
 **/
 
 
+
 /**
- * saves bound forces and ligand coordinates
+ * restore coordinates of state 1
  */
-__kernel void SaveBound(int numLigParticles,
-			__global   int* restrict LigParticle,
+__kernel void RestoreState1(int numParticles,
+			__global real4* restrict posq,
+			__global real4* restrict BaseCoordinates) {
+  uint index = get_global_id(0);
+  while(index < numParticles){
+    posq[index] = BaseCoordinates[index];
+    index += get_global_size(0);
+  }
+}
+
+
+/**
+ * saves coordinates and forces of a state1
+ **/
+__kernel void SaveState1(int numParticles,
 			__global real4* restrict posq,
 			__global real4* restrict forces,
-			__global real4* restrict BoundForces,
-			__global real4* restrict BoundLigandCoordinates) {
+			__global real4* restrict SaveForces,
+			__global real4* restrict SaveCoordinates) {
 
   uint index = get_global_id(0);
-  while (index < NUM_ATOMS) {
-    BoundForces[index] = forces[index];
+  while (index < numParticles) {
+    SaveForces[index] = forces[index];
     index += get_global_size(0);
   }
-  
+ 
   index = get_global_id(0);
-  while(index < numLigParticles){
-    int p = LigParticle[index];
-    BoundLigandCoordinates[index] = posq[p];
+  while(index < numParticles){
+    SaveCoordinates[index] = posq[index];
     index += get_global_size(0);
   }
-
 }
 
-
-
 /**
- * saves bound forces and ligand coordinates
- */
-__kernel void SaveUnbound(__global real4* restrict forces,
-			  __global real4* restrict UnboundForces){
+ * saves forces of state2
+ **/
+__kernel void SaveState2(int numParticles,
+			__global real4* restrict forces,
+			__global real4* restrict SaveForces) {
 
   uint index = get_global_id(0);
-  while (index < NUM_ATOMS) {
-    UnboundForces[index] = forces[index];
+  while(index < numParticles){
+    SaveForces[index] = forces[index];
     index += get_global_size(0);
   }
 }
 
 
 /**
- * restores bound ligand coordinates
+ * displaces ligand to make state 2
  */
-__kernel void RestoreBound(int numLigParticles,
-			__global   int* restrict LigParticle,
-			__global real4* restrict posq,
-			__global real4* restrict BoundLigandCoordinates) {
-
+__kernel void MakeState2(int numParticles,
+			 __global real4* restrict posq,
+			 __global real4* restrict Statedispl){
   uint index = get_global_id(0);
-  while (index < numLigParticles) {
-    int p = LigParticle[index];
-    posq[p] = BoundLigandCoordinates[index];
+  while (index < numParticles) {
+    posq[index] += Statedispl[index];
     index += get_global_size(0);
   }
-
-}
-
-/**
- * displaces ligand to make unbound state
- */
-__kernel void MakeUnbound(int numLigParticles,
-			  __global   int* restrict LigParticle,
-			  float displx, float disply, float displz,
-			  __global real4* restrict posq
-			  ){
-  real4 displacement = (real4)(displx,disply,displz,0);
-  uint index = get_global_id(0);
-  while (index < numLigParticles) {
-    int p = LigParticle[index];
-    posq[p] += displacement;
-    index += get_global_size(0);
-  }
-
 }

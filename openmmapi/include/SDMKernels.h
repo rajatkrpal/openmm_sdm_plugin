@@ -65,7 +65,7 @@ public:
      * @param integrator the LangevinIntegrator this kernel is being used for
      */
     virtual void execute(OpenMM::ContextImpl& context, LangevinIntegratorSDM& integrator,
-			 double BoundEnergy, double UnboundEnergy, double RestraintEnergy) = 0;
+			 double State1Energy, double State2Energy, double RestraintEnergy) = 0;
 
     
     /**
@@ -75,31 +75,45 @@ public:
      * @param integrator the LangevinIntegrator this kernel is being used for
      */
     virtual double computeKineticEnergy(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
-
-
+    
+    /**
+     * Save ligand coordinates of the base state of the system
+     */
+    //virtual void SaveBaseState(ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+   
     /**
      * Save ligand coordinates and system forces of bound system
      */
-    virtual void SaveBound(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+    virtual void SaveState1(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
 
 
     /**
      * Save ligand coordinates and system forces of unbound system
      */
-    virtual void SaveUnbound(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+    virtual void SaveState2(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
     
     /**
-     * Restores ligand coordinates at the bound system
+     * Restores ligand coordinates at the base system
      * 
      */
-    virtual void RestoreBound(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+    virtual void RestoreState1(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
 
     /**
-     * Displaces ligand so that it is unbound
+     * Displaces system so that it is in state 1
      * 
      */
-    virtual void MakeUnbound(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+    //virtual void MakeState1(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+    
+    /**
+     * Displaces system so that it is in state 1
+     * 
+     */
+    virtual void MakeState2(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator) = 0;
+     
 };
+
+
+  
   
 } // namespace SDMPlugin
 

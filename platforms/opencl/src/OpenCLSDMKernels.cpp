@@ -74,7 +74,8 @@ void OpenCLIntegrateLangevinStepSDMKernel::initialize(const System& system, cons
     cl.getPlatformData().initializeContexts(system);
     cl.getIntegrationUtilities().initRandomNumberGenerator(integrator.getRandomNumberSeed());
     map<string, string> defines;
-    defines["NUM_ATOMS"] = cl.intToString(cl.getNumAtoms());
+    int numParticles = cl.getNumAtoms();
+    defines["NUM_ATOMS"] = cl.intToString(numParticles);
     defines["PADDED_NUM_ATOMS"] = cl.intToString(cl.getPaddedNumAtoms());
     cl::Program program = cl.createProgram(OpenCLSDMKernelSources::langevin, defines, "");
     kernelSDMForce = cl::Kernel(program, "sdmForce");
@@ -82,44 +83,49 @@ void OpenCLIntegrateLangevinStepSDMKernel::initialize(const System& system, cons
     kernel2 = cl::Kernel(program, "integrateLangevinPart2");
     params = new OpenCLArray(cl, 3, cl.getUseDoublePrecision() || cl.getUseMixedPrecision() ? sizeof(cl_double) : sizeof(cl_float), "langevinParams");
 
-    vector<int> lig_particles = integrator.getLigParticle();
-    ligsize = lig_particles.size();
-    LigParticle = new OpenCLArray(cl, ligsize, sizeof(cl_int), "LigParticle");
-    LigParticle->upload(lig_particles);
+    //sets up displacement buffers
+    vector<mm_float4> displ2;
+    displ2.resize(cl.getPaddedNumAtoms());
+    for(int p=0;p<cl.getPaddedNumAtoms();++p) displ2[p].x = displ2[p].y = displ2[p].z = displ2[p].w = 0.0; 
+    for(int p=0;p<numParticles;++p){
+      Vec3 d = integrator.getDisplacement(p);
+      displ2[p].x = d[0];
+      displ2[p].y = d[1];
+      displ2[p].z = d[2];
+    }
+    State2displ = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "State2displ");
+    State2displ->upload(displ2);
 
+    //coordinates and force buffers
     //need to worry about mixed/double precisions?
-    BoundForces = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "BoundForces");
-    UnboundForces = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "UnboundForces");
-    BoundLigandCoordinates = OpenCLArray::create<mm_float4>(cl, ligsize, "BoundLigandCoordinates");
+    State1Forces = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "State1Forces");
+    State2Forces = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "State2Forces");
+    State1Coordinates = OpenCLArray::create<mm_float4>(cl, cl.getPaddedNumAtoms(), "State1Coordinates");
 
-    SaveBoundKernel = cl::Kernel(program, "SaveBound");
-    SaveBoundKernel.setArg<cl_int>(0, ligsize);
-    SaveBoundKernel.setArg<cl::Buffer>(1, LigParticle->getDeviceBuffer());    
-    SaveBoundKernel.setArg<cl::Buffer>(2, cl.getPosq().getDeviceBuffer());
-    SaveBoundKernel.setArg<cl::Buffer>(3, cl.getForce().getDeviceBuffer());
-    SaveBoundKernel.setArg<cl::Buffer>(4, BoundForces->getDeviceBuffer());
-    SaveBoundKernel.setArg<cl::Buffer>(5, BoundLigandCoordinates->getDeviceBuffer());
+    // kernels to save states
+    SaveState1Kernel = cl::Kernel(program, "SaveState1");
+    SaveState1Kernel.setArg<cl_int>(0, numParticles);
+    SaveState1Kernel.setArg<cl::Buffer>(1, cl.getPosq().getDeviceBuffer());
+    SaveState1Kernel.setArg<cl::Buffer>(2, cl.getForce().getDeviceBuffer());
+    SaveState1Kernel.setArg<cl::Buffer>(3, State1Forces->getDeviceBuffer());
+    SaveState1Kernel.setArg<cl::Buffer>(4, State1Coordinates->getDeviceBuffer());
 
-    SaveUnboundKernel = cl::Kernel(program, "SaveUnbound");
-    SaveUnboundKernel.setArg<cl::Buffer>(0, cl.getForce().getDeviceBuffer());
-    SaveUnboundKernel.setArg<cl::Buffer>(1, UnboundForces->getDeviceBuffer());
+    SaveState2Kernel = cl::Kernel(program, "SaveState2");
+    SaveState2Kernel.setArg<cl_int>(0, numParticles);
+    SaveState2Kernel.setArg<cl::Buffer>(1, cl.getForce().getDeviceBuffer());
+    SaveState2Kernel.setArg<cl::Buffer>(2, State2Forces->getDeviceBuffer());
 
-    RestoreBoundKernel = cl::Kernel(program, "RestoreBound");
-    RestoreBoundKernel.setArg<cl_int>(0, ligsize);
-    RestoreBoundKernel.setArg<cl::Buffer>(1, LigParticle->getDeviceBuffer());    
-    RestoreBoundKernel.setArg<cl::Buffer>(2, cl.getPosq().getDeviceBuffer());
-    RestoreBoundKernel.setArg<cl::Buffer>(3, BoundLigandCoordinates->getDeviceBuffer());
+    // kernels to set states
+    RestoreState1Kernel = cl::Kernel(program, "RestoreState1");
+    RestoreState1Kernel.setArg<cl_int>(0, numParticles);
+    RestoreState1Kernel.setArg<cl::Buffer>(1, cl.getPosq().getDeviceBuffer());
+    RestoreState1Kernel.setArg<cl::Buffer>(2, State1Coordinates->getDeviceBuffer());
     
-    MakeUnboundKernel = cl::Kernel(program, "MakeUnbound");
-    Vec3 displ = integrator.getDisplacement();
-    float dx = displ[0]; float dy = displ[1]; float dz = displ[2];
-    MakeUnboundKernel.setArg<cl_int>(0, ligsize);
-    MakeUnboundKernel.setArg<cl::Buffer>(1, LigParticle->getDeviceBuffer());    
-    MakeUnboundKernel.setArg<cl_float>  (2, dx);
-    MakeUnboundKernel.setArg<cl_float>  (3, dy);
-    MakeUnboundKernel.setArg<cl_float>  (4, dz);
-    MakeUnboundKernel.setArg<cl::Buffer>(5, cl.getPosq().getDeviceBuffer());
-
+    MakeState2Kernel = cl::Kernel(program, "MakeState2");
+    MakeState2Kernel.setArg<cl_int>(0, numParticles);
+    MakeState2Kernel.setArg<cl::Buffer>(1, cl.getPosq().getDeviceBuffer());
+    MakeState2Kernel.setArg<cl::Buffer>(2, State2displ->getDeviceBuffer());
+    
     //soft core parameters
     umax = integrator.getUmax();
     acore = integrator.getAcore();
@@ -127,27 +133,24 @@ void OpenCLIntegrateLangevinStepSDMKernel::initialize(const System& system, cons
 }
 
 
-void OpenCLIntegrateLangevinStepSDMKernel::SaveBound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  cl.executeKernel(SaveBoundKernel, cl.getNumAtoms());
+void OpenCLIntegrateLangevinStepSDMKernel::SaveState1(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  cl.executeKernel(SaveState1Kernel, cl.getNumAtoms());
 }
 
-void OpenCLIntegrateLangevinStepSDMKernel::SaveUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  cl.executeKernel(SaveUnboundKernel, cl.getNumAtoms());
+void OpenCLIntegrateLangevinStepSDMKernel::SaveState2(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  cl.executeKernel(SaveState2Kernel, cl.getNumAtoms());
 }
 
-
-
-void OpenCLIntegrateLangevinStepSDMKernel::RestoreBound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  cl.executeKernel(RestoreBoundKernel, cl.getNumAtoms());
+void OpenCLIntegrateLangevinStepSDMKernel::RestoreState1(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  cl.executeKernel(RestoreState1Kernel, cl.getNumAtoms());
 }
 
-void OpenCLIntegrateLangevinStepSDMKernel::MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
-  cl.executeKernel(MakeUnboundKernel, cl.getNumAtoms());
+void OpenCLIntegrateLangevinStepSDMKernel::MakeState2(ContextImpl& context, const LangevinIntegratorSDM& integrator) {
+  cl.executeKernel(MakeState2Kernel, cl.getNumAtoms());
 }
-
 
 void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, LangevinIntegratorSDM& integrator,
-						     double BoundEnergy, double UnboundEnergy, double RestraintEnergy) {
+						     double State1Energy, double State2Energy, double RestraintEnergy) {
     OpenCLIntegrationUtilities& integration = cl.getIntegrationUtilities();
     int numAtoms = cl.getNumAtoms();
     double lambdac = integrator.getLambda();
@@ -215,8 +218,8 @@ void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Langevi
         kernel2.setArg<cl::Buffer>(4, integration.getStepSize().getDeviceBuffer());
 
 	kernelSDMForce.setArg<cl::Buffer>(0, cl.getPosq().getDeviceBuffer());
-	kernelSDMForce.setArg<cl::Buffer>(1, BoundForces->getDeviceBuffer());
-	kernelSDMForce.setArg<cl::Buffer>(2, UnboundForces->getDeviceBuffer());
+	kernelSDMForce.setArg<cl::Buffer>(1, State1Forces->getDeviceBuffer());
+	kernelSDMForce.setArg<cl::Buffer>(2, State2Forces->getDeviceBuffer());
 	kernelSDMForce.setArg<cl::Buffer>(3, cl.getForce().getDeviceBuffer());
     }
 
@@ -229,7 +232,7 @@ void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Langevi
     //hybrid potential energy
     double fp;
     //double BindE = integrator.SoftCoreF(BoundEnergy - UnboundEnergy, umax, acore, ubcore, fp);
-    double BindE = integrator.SoftCoreF(UnboundEnergy - BoundEnergy, umax, acore, ubcore, fp); //DEBUG
+    double BindE = integrator.SoftCoreF(State2Energy - State1Energy, umax, acore, ubcore, fp);
     double bfp = 0.0;
     double ebias = 0.0;
     if( method == LangevinIntegratorSDM::QuadraticMethod){
@@ -247,7 +250,7 @@ void OpenCLIntegrateLangevinStepSDMKernel::execute(ContextImpl& context, Langevi
       bfp = lambdac;
     }
     //double PotEnergy = UnboundEnergy + ebias + RestraintEnergy;
-    double PotEnergy = BoundEnergy + ebias + RestraintEnergy;//DEBUG
+    double PotEnergy = State1Energy + ebias + RestraintEnergy;//DEBUG
     integrator.setPotEnergy(PotEnergy);
     integrator.setBindE(BindE);
 

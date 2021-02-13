@@ -72,35 +72,41 @@ public:
      */
     double computeKineticEnergy(OpenMM::ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Save ligand coordinates and system forces of bound system */
-   void SaveBound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Save coordinates and system forces of State 1 */
+   void SaveState1(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Save ligand coordinates and system forces of bound system */
-   void SaveUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Save coordinates and system forces of State 2 */
+   void SaveState2(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Restores ligand coordinates at the bound system */
-   void RestoreBound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Restores ligand coordinates at reference state */
+   void RestoreState1(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Displaces ligand so that it is unbound */
-   void MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Displaces coordinates to place system in state 2 */
+   void MakeState2(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   
 
 private:
     OpenCLContext& cl;
     double prevTemp, prevFriction, prevStepSize;
     bool hasInitializedKernels;
     OpenCLArray* params;
-    int ligsize;
-    OpenCLArray* LigParticle;
-    OpenCLArray* BoundForces;
-    OpenCLArray* UnboundForces;
-    OpenCLArray* BoundLigandCoordinates;
+
+    OpenCLArray* State1Forces;
+    OpenCLArray* State2Forces;
+
+    OpenCLArray* State1Coordinates;
+    OpenCLArray* State2Coordinates;
+
+    OpenCLArray* State2displ;
     
     cl::Kernel kernel1, kernel2;
     cl::Kernel kernelSDMForce; //bedam hybrid forces
-    cl::Kernel SaveBoundKernel;    //save forces and ligand coordinates of bound state
-    cl::Kernel SaveUnboundKernel;    //save forces and ligand coordinates of bound state
-    cl::Kernel RestoreBoundKernel; //restores bound coordinates of the ligand
-    cl::Kernel MakeUnboundKernel;  //creates unbound state by displacing the ligand
+    
+    cl::Kernel SaveState1Kernel;
+    cl::Kernel SaveState2Kernel;
+    
+    cl::Kernel RestoreState1Kernel;
+    cl::Kernel MakeState2Kernel;
 
     double umax;
     double acore;

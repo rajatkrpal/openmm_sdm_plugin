@@ -82,8 +82,7 @@ public:
    %apply double INPUT {double r0};
 */
    LangevinIntegratorSDM(double temperature, double frictionCoeff, double stepSize,
-			   std::vector<int> LigParticle_t);
-   std::vector<int> getLigParticle() const;
+			   int nParticles);
    void setLambda(double lambdac) ;
    double getLambda() const ;
    double getTemperature() const ;
@@ -92,7 +91,6 @@ public:
    void setFriction(double coeff) ;
    int getRandomNumberSeed() const ;
    void setRandomNumberSeed(int seed) ;
-   virtual void step(int steps) ;
    double getBindE() const ;
    void setBindE(double be) ;
    double getPotEnergy(void) const ;
@@ -103,7 +101,6 @@ public:
    void setAcore(double a) ;
    double getUbcore(void) const ;
    void setUbcore(double a) ;
-   void setRestraintControlParameterName(std::string name) ;
    void setBiasMethod(int method) ;
    int getBiasMethod() const ;
    void setSoftCoreMethod(int method) ;
@@ -143,8 +140,9 @@ public:
    double getu0intercept() const;
    void setw0intercept(double bw0);
    double getw0intercept() const;
-   void setDisplacement(double dx, double dy, double dz);
-   Vec3 getDisplacement() const;
+   void setDisplacement(int atom, double dx, double dy, double dz);
+   Vec3 getDisplacement(int atom) const;
+   virtual void step(int steps) ;
 };
 
 }

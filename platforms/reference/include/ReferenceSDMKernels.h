@@ -77,32 +77,28 @@ public:
      */
    double computeKineticEnergy(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Save ligand coordinates and system forces of bound system */
-   void SaveBound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Save coordinates and system forces of State 1 */
+   void SaveState1(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Save system forces of unbound system */
-   void SaveUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Save system forces of State 2 */
+   void SaveState2(ContextImpl& context, const LangevinIntegratorSDM& integrator);
    
-   /* Restores ligand coordinates at the bound system */
-   void RestoreBound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   /* Restores ligand coordinates at reference state */
+   void RestoreState1(ContextImpl& context, const LangevinIntegratorSDM& integrator);
 
-   /* Displaces ligand so that it is unbound */
-   void MakeUnbound(ContextImpl& context, const LangevinIntegratorSDM& integrator);
-
+   /* Displaces coordinates to place system in state 2 */
+   void MakeState2(ContextImpl& context, const LangevinIntegratorSDM& integrator);
+   
 
  private:
   ReferencePlatform::PlatformData& data;
   ReferenceStochasticDynamicsSDM* dynamics;
   std::vector<RealOpenMM> masses;
   double prevTemp, prevFriction, prevStepSize;
-  std::vector<Vec3> restraintForces;
-
-  std::vector<Vec3> BoundForces;
-  std::vector<Vec3> UnboundForces;
-  double BoundEnergy, UnboundEnergy;
-  std::vector<Vec3> LigandCoordinates;
-
-  vector<int> LigParticle;
+  std::vector<Vec3> State1Coordinates;
+  std::vector<Vec3> State1Forces;
+  std::vector<Vec3> State2Forces;
+  std::vector<Vec3> State2Displacement;//displacement map to go from state 1 to 2
 
   };
 

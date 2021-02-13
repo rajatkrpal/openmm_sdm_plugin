@@ -45,7 +45,7 @@ using namespace OpenMM;
 using std::string;
 using std::vector;
 
-LangevinIntegratorSDM::LangevinIntegratorSDM(double temperature, double frictionCoeff, double stepSize, vector<int> LigParticle_t) : LigParticle(LigParticle_t) {
+LangevinIntegratorSDM::LangevinIntegratorSDM(double temperature, double frictionCoeff, double stepSize, int nParticles_t) {
 
       setTemperature(temperature);
       setFriction(frictionCoeff);
@@ -76,10 +76,12 @@ LangevinIntegratorSDM::LangevinIntegratorSDM(double temperature, double friction
 
       setNonEquilibrium(0);
       work_value = 0.0;
-      hasRestraintControl = false;
 
-      //default displacement vector is 20 nm along x, y, z
-      displx = disply = displz = 20.0;
+      //set up displacement maps
+      nParticles = nParticles_t;
+      displ.clear();
+      for (int i=0;i<nParticles;i++) displ.push_back(Vec3(0.,0.,0.));
+      
 }
 
 
@@ -135,11 +137,12 @@ double LangevinIntegratorSDM::SoftCoreF(double u, double umax, double a, double 
     fp = 1. - t*t;
     return umax*t + ub;
   }else if(softcore_method == RationalMethod){
-    double gu = (u-ub)/(a*umax); //this is x/alpha
-    double zeta = pow( 1. + 2.*gu*(gu + 1.) , a );
-    double s = a*umax*(a*umax + 2.*(u-ub));
-    fp = ((4.*s)/(s + 2.*(u-ub)*(u-ub)))*zeta/pow(1.+zeta,2);
-    return umax*(zeta - 1.)/(zeta + 1.) + ub;
+    double gu = (u-ub)/(a*(umax-ub)); //this is y/alpha
+    double zeta = 1. + 2.*gu*(gu + 1.) ;
+    double zetap = pow( zeta , a );
+    double s = 4.*(2.*gu + 1.)/zeta;
+    fp = s*zetap/pow(1.+zetap,2);
+    return (umax-ub)*(zetap - 1.)/(zetap + 1.) + ub;
   }else{
     throw OpenMMException("Unknown soft core method");
   }
@@ -148,28 +151,33 @@ double LangevinIntegratorSDM::SoftCoreF(double u, double umax, double a, double 
 
 
 void LangevinIntegratorSDM::step(int steps) {
+  bool do_energy = true;
+  
     for (int i = 0; i < steps; ++i) {
-      
-	context->updateContextState();
-	//second 'true' is for the energy
-	//4 = evaluate force group 2 (non-bonded)
-        double BoundNBEnergy = context->calcForcesAndEnergy(true, true, 4);
-	kernel.getAs<IntegrateLangevinStepSDMKernel>().SaveBound(*context, *this);
 
-	//unbound system
-	kernel.getAs<IntegrateLangevinStepSDMKernel>().MakeUnbound(*context, *this);
+	//evaluate energy and force for state 1, 4 = evaluate force group 2 (non-bonded)
 	context->updateContextState();
-	double UnboundNBEnergy = context->calcForcesAndEnergy(true, true, 4);
-	kernel.getAs<IntegrateLangevinStepSDMKernel>().SaveUnbound(*context, *this);
+	double State1Energy = context->calcForcesAndEnergy(true, do_energy, 4);
+	//store coordinates and forces of state 1
+	kernel.getAs<IntegrateLangevinStepSDMKernel>().SaveState1(*context, *this);
+
+	//make state 2
+	kernel.getAs<IntegrateLangevinStepSDMKernel>().MakeState2(*context, *this);
+	//evaluate energy and force for state 2, 4 = evaluate force group 2 (non-bonded)
+	context->updateContextState();
+	double State2Energy = context->calcForcesAndEnergy(true, do_energy, 4);
+	//store forces of state 2
+	kernel.getAs<IntegrateLangevinStepSDMKernel>().SaveState2(*context, *this);
 	
-	//restore to bound system
-	kernel.getAs<IntegrateLangevinStepSDMKernel>().RestoreBound(*context, *this);
-	//2 = force group 1 (bonded and restraints)
-	double BondAndRestraintEnergy = context->calcForcesAndEnergy(true, true, 2);
+	//restore original state
+	kernel.getAs<IntegrateLangevinStepSDMKernel>().RestoreState1(*context, *this);
+	//evaluate bonded and restraint forces, 2 = force group 1 (bonded and restraints)
+	context->updateContextState();
+	double BondAndRestraintEnergy = context->calcForcesAndEnergy(true, do_energy, 2);
 
 	//perform step with hybrid forces
-	// std::cout << BoundNBEnergy << " " << UnboundNBEnergy << " " << BondAndRestraintEnergy << std::endl;
+	//std::cout << State1Energy << " " << State2Energy << " " << BondAndRestraintEnergy << std::endl;
         kernel.getAs<IntegrateLangevinStepSDMKernel>().execute(*context, *this,
-						BoundNBEnergy, UnboundNBEnergy, BondAndRestraintEnergy);
+						State1Energy, State2Energy, BondAndRestraintEnergy);
     }
 }
