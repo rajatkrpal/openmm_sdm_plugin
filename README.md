@@ -1,4 +1,4 @@
-# OpenMM SDM Plugin
+# OpenMM SDM Plugin v2.0-beta
 
 A plugin to implement the Single-Decoupling alchemical protocol in OpenMM
 
@@ -19,13 +19,27 @@ This software is maintained by the Gallicchio's laboratory at Department of Chem
 
 The plugin interface is based on the [openmmexampleplugin](https://github.com/peastman/openmmexampleplugin) by Peter Eastman.
 
+## Versions
+ 
+### v1.0-beta release
+
+Suitable for absolute binding free energy calculations with implicit solvation. An automated workflow is available to set up SDM v1.0 calculations [openmm_sdm_workflow](https://github.com/egallicc/openmm_sdm_workflow)
+
+### v1.1-beta release
+
+Uses a user-provided displacement vector. Used in [Alchemical Transfer Approach to Absolute Binding Free Energy Estimation](https://arxiv.org/abs/2101.07894) and in the SAMPL8 GDCC challenge.
+
+### v2.0-beta (current)
+
+Uses a user-provided displacement map, which generalizes it to most/all use cases, including relative binding free energy calculations. 
+
 ## Requirements
 
 OpenMM 7. Known to work with the OpenMM 7.2.2 and OpenMM 7.3.1
 
 Platforms supported: Reference and OpenCL (CUDA will be supported soon).
 
-Our workflow to set up SDM calculations with this plugin [openmm_sdm_workflow](https://github.com/egallicc/openmm_sdm_workflow) assumes input from structure and parameter files in desmond file format. This requires the latest [desmond file reader](https://github.com/egallicc/openmm/blob/master/wrappers/python/simtk/openmm/app/desmonddmsfile.py). Copy the [desmond file reader](https://github.com/egallicc/openmm/blob/master/wrappers/python/simtk/openmm/app/desmonddmsfile.py) in your OpenMM source tree and rebuild it.
+Our setup and simulation protocol ssumes input from structure and parameter files in desmond file format. This requires the latest [desmond file reader](https://github.com/egallicc/openmm/blob/master/wrappers/python/simtk/openmm/app/desmonddmsfile.py). Copy the [desmond file reader](https://github.com/egallicc/openmm/blob/master/wrappers/python/simtk/openmm/app/desmonddmsfile.py) in your OpenMM source tree and rebuild it.
 
 ## Installation
 
