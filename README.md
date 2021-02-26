@@ -84,7 +84,7 @@ python test.py
 or edit `runopenmm` and do
 
 ```
-./runopenmm python test.py
+./runopenmm test.py
 ```
 
 in each case, `<openmm_dir>` is the OpenMM installation directory. We assume here that python can find the OpenMM python modules, for example under a conda/miniconda environment.
