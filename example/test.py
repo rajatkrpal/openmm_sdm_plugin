@@ -6,7 +6,7 @@ from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
 import os, re,time, shutil, math
-from simtk.openmm.app.desmonddmsfile import *
+from desmonddmsfile75 import *
 from datetime import datetime
 from SDMplugin import *
 
