@@ -467,7 +467,7 @@ public:
   void setDisplacement(int atom, double dx, double dy, double dz){
     displ[atom] = Vec3(dx,dy,dz);
   }
-  Vec3 getDisplacement(int atom) const {
+  OpenMM::Vec3 getDisplacement(int atom) const {
     return displ[atom]; 
   }
 

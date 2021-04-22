@@ -141,7 +141,7 @@ public:
    void setw0intercept(double bw0);
    double getw0intercept() const;
    void setDisplacement(int atom, double dx, double dy, double dz);
-   Vec3 getDisplacement(int atom) const;
+   OpenMM::Vec3 getDisplacement(int atom) const;
    virtual void step(int steps) ;
 };
 
