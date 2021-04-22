@@ -81,5 +81,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<openmm_dir>/lib:<openmm_dir>/lib/plugin
 python test.py
 ```
 
-`<openmm_dir>` is the OpenMM installation directory. Again, the last step is best accomplished under the same `virtualenv` environment used to build the python modules.
+or edit `runopenmm` and do
+
+```
+./runopenmm test.py
+```
+
+in each case, `<openmm_dir>` is the OpenMM installation directory. We assume here that python can find the OpenMM python modules, for example under a conda/miniconda environment.
 
